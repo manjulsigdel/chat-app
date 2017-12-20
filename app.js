@@ -6,9 +6,12 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const { check, validationResult } = require('express-validator/check');
 const { matchedData, sanitize } = require('express-validator/filter');
+const passport = require('passport');
+const config = require('./config/database');
+const io = require('socket.io')(http);
 
 // Connect MongoDB
-mongoose.connect('mongodb://localhost/nodekb');
+mongoose.connect(config.database);
 let db = mongoose.connection;
 
 // Check connection
@@ -53,6 +56,18 @@ app.use(function (req, res, next) {
     next();
 });
 
+// Passport Config
+require('./config/passport')(passport);
+
+// Passport Middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.get('*', function(req, res, next){
+    res.locals.user = req.user || null;
+    next();
+});
+
 // Home Route
 app.get('/', function (req, res) {
     Article.find({}, function (err, articles) {
@@ -68,13 +83,16 @@ app.get('/', function (req, res) {
 });
 
 // Route Files
+
+// Articles Route
 let articles = require('./routes/articles');
 app.use('/articles', articles);
 
+// Users Route
 let users = require('./routes/users');
 app.use('/users', users);
 
 // Start Server
-app.listen(2000, function () {
-    console.log('Server started on port 4000....');
+app.listen(8000, function () {
+    console.log('Server started on port 8000....');
 });

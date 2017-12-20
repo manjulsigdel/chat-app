@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator/check');
 const bcrypt = require('bcryptjs');
+const passport = require('passport');
 
 // Bring in User Model
 let User = require('../models/user');
@@ -32,19 +33,19 @@ router.post('/register',
             user.email = req.body.email;
             user.username = req.body.username;
             user.password = req.body.password;
-            bcrypt.getSalt(10, function (err, salt) {
+            bcrypt.genSalt(10, function (err, salt) {
                 bcrypt.hash(user.password, salt, function (err, hash) {
-                    if (error) {
+                    if (err) {
                         console.log(err);
                     }
                     user.password = hash;
                     user.save(function (err) {
-                        if (error) {
+                        if (err) {
                             console.log(err);
                             return;
                         } else {
                             req.flash('success', 'You are now registered and can log in');
-                            req.redirect('/user/login');
+                            res.redirect('/users/login');
                         }
                     });
                 });
@@ -53,9 +54,25 @@ router.post('/register',
     }
 );
 
-// Login
+// Login Form
 router.get('/login', function (req, res) {
     res.render('login');
+});
+
+// Login Process
+router.post('/login', function (req, res, next) {
+    passport.authenticate('local', {
+        successRedirect: '/',
+        failureRedirect: '/users/login',
+        failureFlash: true
+    })(req, res, next);
+});
+
+// Logout
+router.get('/logout', function(req, res){
+    req.logout();
+    req.flash('success', 'You are logged out');
+    res.redirect('/users/login');
 });
 
 module.exports = router;
