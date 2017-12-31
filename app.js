@@ -8,7 +8,7 @@ const { check, validationResult } = require('express-validator/check');
 const { matchedData, sanitize } = require('express-validator/filter');
 const passport = require('passport');
 const config = require('./config/database');
-const port = process.env.PORT || 2000;
+const port = process.env.PORT || 5000;
 
 // Connect MongoDB
 mongoose.connect(config.database);
