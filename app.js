@@ -89,7 +89,7 @@ app.get('/chat', ensureAuthenticated, function (req, res) {
         user: req.user
     });
 });
-
+//
 // Socket Connection
 io.on('connection', function (socket) {
     console.log('a user connected');
