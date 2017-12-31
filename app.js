@@ -8,6 +8,7 @@ const { check, validationResult } = require('express-validator/check');
 const { matchedData, sanitize } = require('express-validator/filter');
 const passport = require('passport');
 const config = require('./config/database');
+const port = process.env.PORT || 2000;
 
 // Connect MongoDB
 mongoose.connect(config.database);
@@ -130,6 +131,6 @@ function ensureAuthenticated(req, res, next) {
 }
 
 // Start Server
-http.listen(2000, function () {
-    console.log('Server started on port 2000....');
+http.listen(port, function () {
+    console.log(`Server started on port ${port}....`);
 });
