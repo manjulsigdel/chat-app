@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node app"
   },
+  "engines": {
+    "node":"8.7.0"
+  },
   "author": "Manjul Sigdel",
   "license": "ISC",
   "dependencies": {
@@ -20,6 +23,7 @@
     "mongoose": "^4.13.7",
     "passport": "^0.4.0",
     "passport-local": "^1.0.0",
-    "pug": "^2.0.0-rc.4"
+    "pug": "^2.0.0-rc.4",
+    "socket.io": "^2.0.4"
   }
 }

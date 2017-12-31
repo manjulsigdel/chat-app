@@ -8,7 +8,6 @@ const { check, validationResult } = require('express-validator/check');
 const { matchedData, sanitize } = require('express-validator/filter');
 const passport = require('passport');
 const config = require('./config/database');
-const io = require('socket.io')(http);
 
 // Connect MongoDB
 mongoose.connect(config.database);
@@ -24,7 +23,9 @@ db.on('error', function (err) {
 });
 
 // Init App
-const app = express();
+var app = express();
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
 
 // Bring in Models
 let Article = require('./models/article');
@@ -63,7 +64,7 @@ require('./config/passport')(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.get('*', function(req, res, next){
+app.get('*', function (req, res, next) {
     res.locals.user = req.user || null;
     next();
 });
@@ -82,6 +83,32 @@ app.get('/', function (req, res) {
     });
 });
 
+// Chat Route
+app.get('/chat', ensureAuthenticated, function (req, res) {
+    res.render('chat', {
+        user: req.user
+    });
+});
+
+// Socket Connection
+io.on('connection', function (socket) {
+    console.log('a user connected');
+    socket.on('status message', function(name){
+        socket.emit('status message', `${name} Entered Chatroom`);
+    });
+    socket.on('chat message', function (msg) {
+        socket.broadcast.emit('chat message', msg);
+    });
+
+    socket.on('disconnect', function () {
+        console.log('user disconnected');
+        socket.on('status message', function(name){
+            socket.emit('status message', `${name} Left Chatroom`);
+        });
+    });
+});
+
+
 // Route Files
 
 // Articles Route
@@ -92,7 +119,17 @@ app.use('/articles', articles);
 let users = require('./routes/users');
 app.use('/users', users);
 
+// Access Control
+function ensureAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+        return next();
+    } else {
+        req.flash('danger', 'Please login');
+        res.redirect('/users/login');
+    }
+}
+
 // Start Server
-app.listen(8000, function () {
-    console.log('Server started on port 8000....');
+http.listen(2000, function () {
+    console.log('Server started on port 2000....');
 });
