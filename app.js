@@ -8,7 +8,7 @@ const { check, validationResult } = require('express-validator/check');
 const { matchedData, sanitize } = require('express-validator/filter');
 const passport = require('passport');
 const config = require('./config/database');
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 7000;
 
 // Connect MongoDB
 mongoose.connect(config.database);
@@ -65,6 +65,7 @@ require('./config/passport')(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Set Global Variable user
 app.get('*', function (req, res, next) {
     res.locals.user = req.user || null;
     next();
@@ -90,22 +91,28 @@ app.get('/chat', ensureAuthenticated, function (req, res) {
         user: req.user
     });
 });
-//
+
 // Socket Connection
-io.on('connection', function (socket) {
+io.on('connection', (socket) => { 
     console.log('a user connected');
-    socket.on('status message', function(name){
-        socket.emit('status message', `${name} Entered Chatroom`);
+
+    socket.on('user joined client', function(name){
+        socket.broadcast.emit('status message', `${name} Entered Chatroom`);
     });
+    socket.on('user left client', function(name){
+        socket.broadcast.emit('status message', `${name} Left Chatroom`);
+    });
+    
     socket.on('chat message', function (msg) {
-        socket.broadcast.emit('chat message', msg);
+        socket.broadcast.emit('chat message', {
+            msg: msg.msg,
+            senderName: msg.senderName
+        });
     });
 
     socket.on('disconnect', function () {
         console.log('user disconnected');
-        socket.on('status message', function(name){
-            socket.emit('status message', `${name} Left Chatroom`);
-        });
+        
     });
 });
 
