@@ -1,0 +1,61 @@
+extends layout
+
+block style
+    link(rel='stylesheet' href='/css/chat-example.css')
+
+block content
+    .chat
+        .chat__sidebar
+            h3 People
+            ul.user__list
+                li.user.active Group Chat
+                each user, i in users
+                    li.user(id=user._id, socket-id="")= user.name
+                        span.user__online__symbol
+                        button.chat__with__user__button.btn.btn-primary.btn-sm Chat
+        .chat__main
+            h4#message__title
+            ol#messages.chat__messages("socket-id-ol")
+            .chat__footer
+                form#message-form
+                    input(name='message', type='text', placeholder='write a message..', autofocus, autocomplete='off')
+                    button Send
+                button#send-location Send Location
+block script
+    script.
+        var userId = "#{currentUser._id}";
+    script#message-template(type='text/template').
+        <li class="message">
+            <div class="message__title">
+                <h4>{{from}}</h4>
+                <span>{{createdAt}}</span>
+            </div>
+            <div class="message__body">
+                <p>{{text}}</p>
+            </div>
+        </li>
+    script#send-private-message-template(type='text/template').
+        <li class="message">
+            <div class="message__title">
+                <h4>{{clientName}}</h4>
+                <span>time</span>
+            </div>
+            <div class="message__body">
+                <div class="message_to_send" data-socketId="{{id}}" >{{message}}</div>
+            </div>
+        </li>
+    script#location-message-template(type='text/template').
+        <li class="message">
+            <div class="message__title">
+                <h4>{{from}}</h4>
+                <span>{{createdAt}}</span>
+            </div>
+            <div class="message__body">
+                <p>
+                    <a href={{url}} target="_blank">My Current Location</a>
+                </p>
+            </div>
+        </li>
+    script(src='/socket.io/socket.io.js') 
+    script(src='/js/libs/deparam.js')
+    script(src='/js/chat-example.js')

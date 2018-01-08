@@ -1,4 +1,4 @@
-
+// Database Config for Production And/Or Development
 if(process.env.NODE_ENV === 'production'){
     module.exports = {
         database: 'mongodb://manjulsigdel:manjul111@ds135817.mlab.com:35817/knowledgebase',
