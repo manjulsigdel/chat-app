@@ -80,6 +80,7 @@ $(function () {
         var socketId = $('#messages').attr('socket-id-ol');
         if (socketId && socketId == message.to) {
             $('[socket-id-ol=' + socketId + ']').append(html);
+            scrollToBottom();
         }
     });
 
@@ -95,6 +96,44 @@ $(function () {
         $('#messages').append(html);
         scrollToBottom();
     });
+
+    // User is typing message on private chat
+    socket.on('newUserIsTypingOnPrivateMessage', function (message) {
+        var formattedTime = moment(message.createdAt).format('h:mm a');
+        var template = $('#userIsTyping-message-template').html();
+        var html = Mustache.render(template, {
+            text: message.text,
+            from: message.from,
+            createdAt: formattedTime
+        });
+        var socketId = $('#messages').attr('socket-id-ol');
+        if (socketId && socketId == message.to) {
+            $('[socket-id-ol=' + socketId + ']').append(html);
+            scrollToBottom();
+        }
+    });
+
+    // User is typing message on group chat
+    socket.on('newUserIsTypingOnGroupMessage', function (message) {
+        var formattedTime = moment(message.createdAt).format('h:mm a');
+        var template = $('#userIsTyping-message-template').html();
+        var html = Mustache.render(template, {
+            text: message.text,
+            from: message.from,
+            createdAt: formattedTime
+        });
+        var socketId = $('#messages').attr('socket-id-ol');
+        if (socketId === "") {
+            $('#messages').append(html);
+            scrollToBottom();
+        }
+    });
+
+    // User stops typing message on private chat
+    socket.on('newUserStopsTyping', function (message) {
+        $('.user__is__typing').remove();
+    });
+
 
     // Make Environment For Private Chat
     $('.user__list .user').on('click', function (e) {
@@ -118,12 +157,72 @@ $(function () {
 
     });
 
+    // User Is Typing or Stops Typing Functionality
+    // Setup
+    var typingTimer;                //timer identifier
+    var doneTypingInterval = 2000;  //time in ms, 5 second for example
+    var $input = $('[name=message]');
+    var fired = false;
+
+    // On keyup, start the countdown
+    $input.on('keyup', function () {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(doneTyping, doneTypingInterval);
+    });
+
+    // On Keydown, fires user is typing message
+    $input.on("keypress", function (e) {
+        clearTimeout(typingTimer);
+        var socketId = $('#messages').attr('socket-id-ol');
+        var keyCode = (e.keyCode ? e.keyCode : e.which);
+        if (fired == false) {
+            if( keyCode == 13){
+                return;
+            }
+            if (socketId) {
+                socket.emit('createUserIsTypingOnPrivateMessage', {
+                    from: userId,
+                    senderSocketId: socket.id,
+                    to: socketId,
+                    text: "...is typing"
+                });
+            } else {
+                socket.emit('createUserIsTypingOnGroupMessage', {
+                    from: userId,
+                    text: "...is typing"
+                });
+            }
+        }
+        fired = true;
+    });
+
+    // When user is finished typing, fire user stops typing message
+    function doneTyping() {
+        fired = false;
+        var socketId = $('#messages').attr('socket-id-ol');
+        if (socketId) {
+            socket.emit('createUserStopsTypingOnPrivateMessage', {
+                from: userId,
+                senderSocketId: socket.id,
+                to: socketId,
+                text: "...stops typing"
+            });
+        } else {
+            socket.emit('createUserStopsTypingOnGroupMessage', {
+                from: userId,
+                text: "...stops typing"
+            });
+        }
+    }
+
     // When a client submits a new message, that message is emitted to the server
     $('#message-form').on('submit', function (e) {
         e.preventDefault();
-
         var messsageTextbox = $('[name=message]');
         var socketId = $('#messages').attr('socket-id-ol');
+
+        fired = false;
+        
         if (socketId) {
             socket.emit('createPrivateMessage', {
                 from: userId,
@@ -133,12 +232,22 @@ $(function () {
             }, function () {
                 messsageTextbox.val('');
             });
+            socket.emit('createUserStopsTypingOnPrivateMessage', {
+                from: userId,
+                senderSocketId: socket.id,
+                to: socketId,
+                text: "...stops typing"
+            });
         } else {
             socket.emit('createMessage', {
                 from: userId,
                 text: messsageTextbox.val()
             }, function () {
                 messsageTextbox.val('');
+            });
+            socket.emit('createUserStopsTypingOnGroupMessage', {
+                from: userId,
+                text: "...stops typing"
             });
         }
     });

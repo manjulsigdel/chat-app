@@ -34,14 +34,14 @@ block script
                 <p>{{text}}</p>
             </div>
         </li>
-    script#send-private-message-template(type='text/template').
-        <li class="message">
+    script#userIsTyping-message-template(type='text/template').
+        <li class="message user__is__typing">
             <div class="message__title">
-                <h4>{{clientName}}</h4>
-                <span>time</span>
+                <h4>{{from}}</h4>
+                <span>{{createdAt}}</span>
             </div>
             <div class="message__body">
-                <div class="message_to_send" data-socketId="{{id}}" >{{message}}</div>
+                <p>{{text}}</p>
             </div>
         </li>
     script#location-message-template(type='text/template').

@@ -188,8 +188,51 @@ io.on('connection', (socket) => {
                 console.log('User Not Found');
             } else {
                 socket.to(message.to).emit('newPrivateMessage', generatePrivateMessage(user.name, message.senderSocketId, message.text));
-                socket.emit('newPrivateMessage', generatePrivateMessage(user.name, message.senderSocketId, message.text));
                 callback();
+            }
+        });
+    });
+
+    // User is typing on Private chat
+    socket.on('createUserIsTypingOnPrivateMessage', (message) => {
+        User.findById(message.from, (err, user) => {
+            if (err) {
+                console.log('User Not Found');
+            } else {
+                socket.to(message.to).emit('newUserIsTypingOnPrivateMessage', generatePrivateMessage(user.name, message.senderSocketId, message.text));
+            }
+        });
+    });
+
+    // User is typing on Group Chat
+    socket.on('createUserIsTypingOnGroupMessage', (message) => {
+        User.findById(message.from, (err, user) => {
+            if (err) {
+                console.log('User Not Found');
+            } else {
+                io.emit('newUserIsTypingOnGroupMessage', generateMessage(user.name, message.text));
+            }
+        });
+    });
+
+    // User stops typing on Private chat
+    socket.on('createUserStopsTypingOnPrivateMessage', (message) => {
+        User.findById(message.from, (err, user) => {
+            if (err) {
+                console.log('User Not Found');
+            } else {
+                socket.to(message.to).emit('newUserStopsTyping', generatePrivateMessage(user.name, message.senderSocketId, message.text));
+            }
+        });
+    });
+
+    // User stops typing on Group Chat
+    socket.on('createUserStopsTypingOnGroupMessage', (message) => {
+        User.findById(message.from, (err, user) => {
+            if (err) {
+                console.log('User Not Found');
+            } else {
+                io.emit('newUserStopsTyping', generateMessage(user.name, message.text));
             }
         });
     });
