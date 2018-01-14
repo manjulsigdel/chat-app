@@ -12,7 +12,9 @@ const port = process.env.PORT || 1000;
 const { generateMessage, generateLocationMessage, generatePrivateMessage } = require('./server/utils/message');
 const { isRealString } = require('./server/utils/validation');
 
+
 // Connect MongoDB
+mongoose.Promise = global.Promise;
 mongoose.connect(config.database);
 let db = mongoose.connection;
 
@@ -34,6 +36,8 @@ var io = require('socket.io')(http);
 let Article = require('./models/article');
 let User = require('./models/user');
 let OnlineUser = require('./models/onlineuser');
+let Room = require('./models/room');
+let Message = require('./models/message');
 
 // Load View Engine
 app.set('views', path.join(__dirname, 'views'));
@@ -41,7 +45,7 @@ app.set('view engine', 'pug');
 
 // Body Parser Middleware
 // parse application/x-www.form-urlencoded
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
 // parse application/json
 app.use(bodyParser.json());
 
@@ -75,6 +79,8 @@ app.get('*', function (req, res, next) {
     next();
 });
 
+// Route Files
+
 // Home Route
 app.get('/', function (req, res) {
     Article.find({}, function (err, articles) {
@@ -85,53 +91,22 @@ app.get('/', function (req, res) {
                 title: 'Articles',
                 articles: articles
             });
+            // res.send(articles);
         }
     });
 });
+
+// Articles Route
+let articles = require('./routes/articles');
+app.use('/articles', articles);
+
+// Users Route
+let users = require('./routes/users');
+app.use('/users', users);
 
 // Chat Route
-// app.get('/chat', ensureAuthenticated, function (req, res) {
-//     res.render('chat', {
-//         user: req.user
-//     });
-// });
-
-// Socket Connection for chat.pug and chat.js
-// io.on('connection', (socket) => {
-//     console.log('a user connected');
-
-//     socket.on('user joined client', function (name) {
-//         socket.broadcast.emit('status message', generateMessage(name, ' Entered Chatroom'));
-//         socket.emit('status message', generateMessage(name, ' Welcome To Chatroom'));
-//     });
-//     socket.on('user left client', function (name) {
-//         socket.broadcast.emit('status message', generateMessage(name, ' Left Chatroom'));
-//     });
-
-//     socket.on('createMessage', function (message, callback) {
-//         socket.broadcast.emit('newMessage', generateMessage(message.from, message.text));
-//         callback('This is from the server');
-//     });
-
-//     socket.on('disconnect', function () {
-//         console.log('user disconnected');
-//     });
-// });
-
-// Chat Example Route
-app.get('/chat', ensureAuthenticated, function (req, res) {
-    User.find({}, (err, users) => {
-        if (err) {
-            console.log('Users Not Found', err);
-        } else {
-            console.log('users found');
-            res.render('chat_example', {
-                users: users,
-                currentUser: req.user
-            });
-        }
-    });
-});
+let chat = require('./routes/chat');
+app.use('/chat', chat);
 
 // Socket Connection for chat-example.pug and chat-example.js
 io.on('connection', (socket) => {
@@ -275,26 +250,6 @@ io.on('connection', (socket) => {
         OnlineUser.remove({}, (err, res) => { });
     });
 });
-
-// Route Files
-
-// Articles Route
-let articles = require('./routes/articles');
-app.use('/articles', articles);
-
-// Users Route
-let users = require('./routes/users');
-app.use('/users', users);
-
-// Access Control
-function ensureAuthenticated(req, res, next) {
-    if (req.isAuthenticated()) {
-        return next();
-    } else {
-        req.flash('danger', 'Please login');
-        res.redirect('/users/login');
-    }
-}
 
 // Start Server
 http.listen(port, function () {

@@ -134,33 +134,70 @@ $(function () {
         $('.user__is__typing').remove();
     });
 
-
     // Make Environment For Private Chat
     $('.user__list .user').on('click', function (e) {
         e.preventDefault();
-        var userId = $(this).attr('id');
-        var socketId = $(this).attr('socket-id');
-        var userName = $(this).html();
-        if (socketId === "") {
-            return 0;
-        }
+        var clientUserId = $(this).attr('id');
+        var clientSocketId = $(this).attr('socket-id');
+        var clientUserName = $(this).html();
 
         $('.user__list .user').removeClass('active');
         $('#messages').attr('socket-id-ol', '');
         $('#messages').empty();
         $(this).addClass('active');
 
-        $('#message__title').html(userName);
-        $('#messages').attr('socket-id-ol', socketId);
+        $('#message__title').html(clientUserName);
+        $('#messages').attr('socket-id-ol', clientSocketId);
+        $('#messages').attr('user-id-ol', clientUserId);
 
+        // AJAX REQUEST
 
-
+        // GET Messages
+        $.ajax({
+            type: 'POST',
+            url: '/chat/messages',
+            data: {
+                users: [userId, clientUserId]
+            },
+            success: function (messageResponse) {
+                var messages = messageResponse.data.messages;
+                // var users = messageResponse.data.users;
+                console.log(messages);
+                messages.forEach(function (message) {
+                    var formattedTime = moment(message.createdAt).format('h:mm a');
+                    var body = message.body;
+                    // $.ajax({
+                    //     type: 'GET',
+                    //     url: '/users/' + message.userId,
+                    //     success: function (userName) {
+                    //         var template = $('#message-template').html();
+                    //         var html = Mustache.render(template, {
+                    //             text: body,
+                    //             from: userName.data,
+                    //             createdAt: formattedTime
+                    //         });
+                    //         $('#messages').append(html);
+                    //         scrollToBottom();
+                    //     }
+                    // });
+                    var template = $('#message-template').html();
+                    var html = Mustache.render(template, {
+                        text: body,
+                        from: message.userName,
+                        createdAt: formattedTime
+                    });
+                    $('#messages').append(html);
+                    scrollToBottom();
+                });
+            },
+            dataType: 'json'
+        });
     });
 
     // User Is Typing or Stops Typing Functionality
     // Setup
-    var typingTimer;                //timer identifier
-    var doneTypingInterval = 2000;  //time in ms, 5 second for example
+    var typingTimer;
+    var doneTypingInterval = 2000;
     var $input = $('[name=message]');
     var fired = false;
 
@@ -176,7 +213,7 @@ $(function () {
         var socketId = $('#messages').attr('socket-id-ol');
         var keyCode = (e.keyCode ? e.keyCode : e.which);
         if (fired == false) {
-            if( keyCode == 13){
+            if (keyCode == 13) {
                 return;
             }
             if (socketId) {
@@ -187,10 +224,10 @@ $(function () {
                     text: "...is typing"
                 });
             } else {
-                socket.emit('createUserIsTypingOnGroupMessage', {
-                    from: userId,
-                    text: "...is typing"
-                });
+                // socket.emit('createUserIsTypingOnGroupMessage', {
+                //     from: userId,
+                //     text: "...is typing"
+                // });
             }
         }
         fired = true;
@@ -219,15 +256,50 @@ $(function () {
     $('#message-form').on('submit', function (e) {
         e.preventDefault();
         var messsageTextbox = $('[name=message]');
-        var socketId = $('#messages').attr('socket-id-ol');
-
+        var clientSocketId = $('#messages').attr('socket-id-ol');
+        var clientUserId = $('#messages').attr('user-id-ol');
+        var users = [userId, clientUserId];
+        // users.push(anotherUserId);
         fired = false;
-        
-        if (socketId) {
+
+        // Data To Be Append
+        var formattedTime = moment().format('h:mm a');
+        var template = $('#message-template').html();
+        var html = Mustache.render(template, {
+            text: messsageTextbox.val(),
+            from: userName,
+            createdAt: formattedTime
+        });
+
+        // AJAX REQUESTS
+
+        // Save Message
+        var messageToBeSaved = {
+            users: users,
+            userId: userId,
+            body: messsageTextbox.val()
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/chat/add',
+            data: messageToBeSaved,
+            success: function (messageResponse) {
+                console.log("click");
+                console.log("Message Saved: " + JSON.stringify(messageResponse, undefined, 2));
+            },
+            dataType: 'json'
+        });
+
+        // If User Is Online
+        if (clientSocketId) {
+            $('[user-id-ol=' + clientUserId + ']').append(html);
+            scrollToBottom();
+
             socket.emit('createPrivateMessage', {
                 from: userId,
                 senderSocketId: socket.id,
-                to: socketId,
+                to: clientSocketId,
                 text: messsageTextbox.val()
             }, function () {
                 messsageTextbox.val('');
@@ -235,21 +307,26 @@ $(function () {
             socket.emit('createUserStopsTypingOnPrivateMessage', {
                 from: userId,
                 senderSocketId: socket.id,
-                to: socketId,
+                to: clientSocketId,
                 text: "...stops typing"
             });
         } else {
-            socket.emit('createMessage', {
-                from: userId,
-                text: messsageTextbox.val()
-            }, function () {
-                messsageTextbox.val('');
-            });
-            socket.emit('createUserStopsTypingOnGroupMessage', {
-                from: userId,
-                text: "...stops typing"
-            });
+            $('[user-id-ol=' + clientUserId + ']').append(html);
+            scrollToBottom();
+            messsageTextbox.val('');
+            // socket.emit('createMessage', {
+            //     from: userId,
+            //     text: messsageTextbox.val()
+            // }, function () {
+            //     messsageTextbox.val('');
+            // });
+            // socket.emit('createUserStopsTypingOnGroupMessage', {
+            //     from: userId,
+            //     text: "...stops typing"
+            // });
         }
+
+
     });
 
     // When a client submits a new location message, that location message is emitted to the server    

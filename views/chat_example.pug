@@ -15,7 +15,7 @@ block content
                         button.chat__with__user__button.btn.btn-primary.btn-sm Chat
         .chat__main
             h4#message__title
-            ol#messages.chat__messages("socket-id-ol")
+            ol#messages.chat__messages(socket-id-ol='', user-id-ol='')
             .chat__footer
                 form#message-form
                     input(name='message', type='text', placeholder='write a message..', autofocus, autocomplete='off')
@@ -24,6 +24,7 @@ block content
 block script
     script.
         var userId = "#{currentUser._id}";
+        var userName = "#{currentUser.name}"
     script#message-template(type='text/template').
         <li class="message">
             <div class="message__title">

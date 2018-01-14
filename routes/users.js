@@ -3,6 +3,7 @@ const router = express.Router();
 const { check, validationResult } = require('express-validator/check');
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
+const { successResponse, errorResponse } = require('../server/utils/response');
 
 // Bring in User Model
 let User = require('../models/user');
@@ -73,6 +74,14 @@ router.get('/logout', function(req, res){
     req.logout();
     req.flash('success', 'You are logged out');
     res.redirect('/users/login');
+});
+
+router.get('/:id', function(req, res){
+    User.findById(req.params.id).then((user)=>{
+        res.send(successResponse(user.name, "User Found Successfully"));
+    },(e)=>{
+        res.send(errorResponse(null, "Could Not Get User"));
+    });
 });
 
 module.exports = router;
