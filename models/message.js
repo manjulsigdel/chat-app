@@ -12,9 +12,12 @@ let messageSchema = Schema({
         ref: 'User'
     },
     body: {
-        type: String,
-        required: true
+        type: String
     },
+    files: [{
+        type: Schema.Types.ObjectId,
+        ref: 'File'
+    }], 
     status: {
         type: Boolean,
         default: false

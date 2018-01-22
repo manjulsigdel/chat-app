@@ -23,4 +23,4 @@ var generatePrivateMessage = (from, to, text) => {
     }
 };
 
-module.exports = {generateMessage, generateLocationMessage, generatePrivateMessage};
+module.exports = { generateMessage, generateLocationMessage, generatePrivateMessage };

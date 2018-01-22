@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { successResponse, errorResponse } = require('../server/utils/response');
 const mongoose = require('mongoose');
+const fileUpload = require('express-fileupload');
+const fs = require('fs');
+const path = require('path');
+const { getAbsolutePath } = require('../server/utils/path');
+const { URL } = require('url');
 
 // Chat Model
 let Message = require('../models/message');
@@ -12,6 +17,9 @@ let Room = require('../models/room');
 // User Model
 let User = require('../models/user');
 
+// File Model
+let File = require('../models/file');
+
 // Get Chat Page
 router.get('/', ensureAuthenticated, function (req, res) {
     User.find({}, (err, users) => {
@@ -19,36 +27,37 @@ router.get('/', ensureAuthenticated, function (req, res) {
             console.log('Users Not Found', err);
         } else {
             console.log('users found');
+            // var usersArray = [];
+            // for(var i = 0; i<users.length;i++){
+            //     var userId = users[i]._id;
+            //     usersArray.push(userId);
+            // }
             res.render('chat_example', {
                 users: users,
+                // usersArray,
                 currentUser: req.user
             });
         }
     });
 });
 
-router.get('/example', (req, res) => {
-    var extractedUsers = [];
-    User.find({}, (err, users) => {
-        console.log(users);
-        extractedUsers = users;
-    });
-    setTimeout(function () {
-        console.log("After receiving users..." + extractedUsers + " how good");
-    }, 1000);
-});
-
-
 // Add Chat Message
 router.post('/add', (req, res) => {
     var users = req.body.users;
     var userId = req.body.userId;
+    var files = req.body.files;
+    var filesToBeInserted = [];
+    if (files) {
+        for (var i = 0; i < files.length; i++) {
+            filesToBeInserted.push(mongoose.Types.ObjectId(files[i]));
+        }
+    }
     var body = req.body.body;
     users = users.sort();
     customUsers = [];
-    users.forEach(function(user){
-        customUsers.push(mongoose.Types.ObjectId(user));
-    });
+    for (var i = 0; i < users.length; i++) {
+        customUsers.push(mongoose.Types.ObjectId(users[i]));
+    }
 
     Room.findOne({ users: users }, (err, room) => {
         if (!room) {
@@ -62,13 +71,28 @@ router.post('/add', (req, res) => {
                     var message = new Message({
                         roomId: room._id,
                         user: mongoose.Types.ObjectId,
+                        files: filesToBeInserted,
                         body
                     });
                     message.save((err, message) => {
                         if (!message) {
                             res.status(400).send(errorResponse(null, "From not room Message Could Not Be Saved."));
                         } else {
-                            res.send(successResponse(message, "Message Successfully Saved."));
+                            Message.findById(message._id).populate('files').exec((err, foundMessage) => {
+                                var fileNames = [];
+                                for (var i = 0; i < foundMessage.files.length; i++) {
+                                    var fileName = foundMessage.files[i].file;
+                                    var filePath = new URL(path.join(__dirname, '../public/images/', fileName));    
+                                    // var filePath = "file:///d://Node-Projects//nodekb//public//images//" + fileName;
+                                    fileNames.push(filePath.href);
+                                }
+                                var msgResponse = {
+                                    body: foundMessage.body,
+                                    files: fileNames
+                                };
+                                console.log(foundMessage);
+                                res.send(msgResponse);
+                            });
                         }
                     });
                 }
@@ -77,19 +101,32 @@ router.post('/add', (req, res) => {
             var message = new Message({
                 roomId: room._id,
                 user: mongoose.Types.ObjectId(userId),
+                files: filesToBeInserted,
                 body
             });
             message.save((err, message) => {
                 if (!message) {
                     res.status(400).send(errorResponse(err, "From room Message Could Not Be Saved."));
                 } else {
-                    res.send(successResponse(message, "Message Successfully Saved."));
+                    Message.findById(message._id).populate('files').exec((err, foundMessage) => {
+                        var fileNames = [];
+                        for (var i = 0; i < foundMessage.files.length; i++) {
+                            var fileName = foundMessage.files[i].file;
+                            var filePath = new URL(path.join(__dirname, '../public/images/', fileName));
+                            // var filePath = "file:///d://Node-Projects//nodekb//public//images//" + fileName;
+                            fileNames.push(filePath.href);
+                        }
+                        var msgResponse = {
+                            body: foundMessage.body,
+                            files: fileNames
+                        };
+                        console.log(foundMessage);
+                        res.send(msgResponse);
+                    });
                 }
-
             });
         }
     });
-
 });
 
 // Get Chat Messages
@@ -98,12 +135,12 @@ router.post('/messages', (req, res) => {
     users.sort();
     Room.findOne({ users: users }).then((room) => {
         if (!room) {
-            res.status(400).send(errorResponse(null, "Room Not Found"));            
+            res.status(400).send(errorResponse(null, "Room Not Found"));
         } else {
-            Message.find({ roomId: room._id }).populate('user').exec((err, messages)=> {
-                if(messages.length > 0){
+            Message.find({ roomId: room._id }).populate('user').exec((err, messages) => {
+                if (messages.length > 0) {
                     var alteredMessages = [];
-                    for(var i =0; i< messages.length; i++){
+                    for (var i = 0; i < messages.length; i++) {
                         var createdAt = messages[i].createdAt;
                         var updatedAt = messages[i].updatedAt;
                         var userId = messages[i].user._id;
@@ -133,6 +170,61 @@ router.post('/messages', (req, res) => {
         res.status(400).send(errorResponse(null, "Invalid Room Users"));
     });
 
+});
+
+// File Upload
+router.post('/file/upload', (req, res) => {
+    var files = req.files.photo;
+    // console.log(files);
+    if (files.length) {
+        var callFiles = [];
+        for (var i = 0; i < files.length; i++) {
+            callFiles.push(saveFile(files[i]));
+        };
+
+        function saveFile(file) {
+            return new Promise((resolve, reject) => {
+                fs.writeFile("public/images/" + file.name, new Buffer(file.data), (err) => {
+                    if (err) {
+                        console.log("Couldn't save file");
+                    } else {
+                        var image = new File(
+                            {
+                                file: file.name,
+                                type: image,
+                            }
+                        );
+                        image.save().then((image) => {
+                            resolve(image._id);
+                        });
+                    }
+                });
+            });
+        };
+        Promise.all(callFiles)
+            .then((data) => res.send(data))
+            .catch((err) => console.log(err));
+    } else {
+        fs.writeFile("public/images/" + files.name, new Buffer(files.data), (err) => {
+            if (err) {
+                console.log(err);
+            } else {
+                var image = new File(
+                    {
+                        file: files.name,
+                        type: image,
+                    }
+                );
+                var response = [];
+                image.save((err, image) => {
+                    if (image) {
+                        response.push(image._id);
+                    }
+                    res.send(response);
+                });
+            }
+        });
+    }
 });
 
 // Access Control

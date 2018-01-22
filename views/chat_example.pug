@@ -8,23 +8,26 @@ block content
         .chat__sidebar
             h3 People
             ul.user__list
-                li.user.active Group Chat
+                li.user.active#all-users Group Chat
                 each user, i in users
                     li.user(id=user._id, socket-id="")= user.name
                         span.user__online__symbol
                         button.chat__with__user__button.btn.btn-primary.btn-sm Chat
         .chat__main
-            h4#message__title
-            ol#messages.chat__messages(socket-id-ol='', user-id-ol='')
+            h4#message__title Group Chat
+            ol#messages.chat__messages(socket-id-ol='', user-id-ol='all-users')
             .chat__footer
                 form#message-form
                     input(name='message', type='text', placeholder='write a message..', autofocus, autocomplete='off')
                     button Send
+                form#file-upload-form(enctype="multipart/form-data")
+                    input#upload-photo(type='file', name='photo', multiple)
                 button#send-location Send Location
+
 block script
     script.
         var userId = "#{currentUser._id}";
-        var userName = "#{currentUser.name}"
+        var userName = "#{currentUser.name}";
     script#message-template(type='text/template').
         <li class="message">
             <div class="message__title">
@@ -33,6 +36,9 @@ block script
             </div>
             <div class="message__body">
                 <p>{{text}}</p>
+                {{#files}}
+                    <img src={{file}} height="50px" width="50px"/>
+                {{/files}}
             </div>
         </li>
     script#userIsTyping-message-template(type='text/template').

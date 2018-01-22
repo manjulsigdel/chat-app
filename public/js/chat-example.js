@@ -143,6 +143,7 @@ $(function () {
 
         $('.user__list .user').removeClass('active');
         $('#messages').attr('socket-id-ol', '');
+        $('#messages').attr('user-id-ol', '');
         $('#messages').empty();
         $(this).addClass('active');
 
@@ -166,20 +167,6 @@ $(function () {
                 messages.forEach(function (message) {
                     var formattedTime = moment(message.createdAt).format('h:mm a');
                     var body = message.body;
-                    // $.ajax({
-                    //     type: 'GET',
-                    //     url: '/users/' + message.userId,
-                    //     success: function (userName) {
-                    //         var template = $('#message-template').html();
-                    //         var html = Mustache.render(template, {
-                    //             text: body,
-                    //             from: userName.data,
-                    //             createdAt: formattedTime
-                    //         });
-                    //         $('#messages').append(html);
-                    //         scrollToBottom();
-                    //     }
-                    // });
                     var template = $('#message-template').html();
                     var html = Mustache.render(template, {
                         text: body,
@@ -195,6 +182,7 @@ $(function () {
     });
 
     // User Is Typing or Stops Typing Functionality
+
     // Setup
     var typingTimer;
     var doneTypingInterval = 2000;
@@ -262,7 +250,7 @@ $(function () {
         // users.push(anotherUserId);
         fired = false;
 
-        // Data To Be Append
+        // Data To Append
         var formattedTime = moment().format('h:mm a');
         var template = $('#message-template').html();
         var html = Mustache.render(template, {
@@ -304,6 +292,7 @@ $(function () {
             }, function () {
                 messsageTextbox.val('');
             });
+
             socket.emit('createUserStopsTypingOnPrivateMessage', {
                 from: userId,
                 senderSocketId: socket.id,
@@ -314,19 +303,68 @@ $(function () {
             $('[user-id-ol=' + clientUserId + ']').append(html);
             scrollToBottom();
             messsageTextbox.val('');
-            // socket.emit('createMessage', {
-            //     from: userId,
-            //     text: messsageTextbox.val()
-            // }, function () {
-            //     messsageTextbox.val('');
-            // });
-            // socket.emit('createUserStopsTypingOnGroupMessage', {
-            //     from: userId,
-            //     text: "...stops typing"
-            // });
         }
+    });
 
+    // Send Image
+    $('#upload-photo').on('change', function () {
+        $('#file-upload-form').submit();
+    });
+    $('#file-upload-form').on('submit', function (e) {
+        e.preventDefault();
+        var clientUserId = $('#messages').attr('user-id-ol');
+        var users = [userId, clientUserId];
+        $.ajax({
+            type: 'POST',
+            url: '/chat/file/upload',
+            data: new FormData($('#file-upload-form')[0]),
+            success: function (fileResp) {
+                console.log("Success");
+                console.log("successfully got: " + fileResp);
+                var messageToBeSaved = {
+                    users: users,
+                    userId: userId,
+                    files: fileResp
+                };
+                $.ajax({
+                    type: 'POST',
+                    url: '/chat/add',
+                    data: messageToBeSaved,
+                    success: function (msgResp) {
+                        // 
+                        console.log(JSON.stringify(msgResp, undefined, 2));
+                        // var showFiles = [];
+                        // var files = msgResp.files;
+                        // for (var i = 0; i < files.length; i++) {
+                        //     var file = files[i].file;
+                        //     showFiles.push(
+                        //         {
+                        //             file: file
+                        //         }
+                        //     )
+                        //     console.log(file);
+                        // }
 
+                        // // Data To Append
+
+                        // var formattedTime = moment().format('h:mm a');
+                        // var template = $('#message-template').html();
+                        // var html = Mustache.render(template, {
+                        //     text: "",
+                        //     from: userName,
+                        //     files: showFiles,
+                        //     createdAt: formattedTime
+                        // });
+                        // $('[user-id-ol=' + clientUserId + ']').append(html);
+                        // scrollToBottom();
+                    },
+                    dataType: 'json'
+                });
+            },
+            cache: false,
+            contentType: false,
+            processData: false
+        });
     });
 
     // When a client submits a new location message, that location message is emitted to the server    

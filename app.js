@@ -11,7 +11,7 @@ const config = require('./config/database');
 const port = process.env.PORT || 1000;
 const { generateMessage, generateLocationMessage, generatePrivateMessage } = require('./server/utils/message');
 const { isRealString } = require('./server/utils/validation');
-
+const fileUpload = require('express-fileupload');
 
 // Connect MongoDB
 mongoose.Promise = global.Promise;
@@ -21,6 +21,7 @@ let db = mongoose.connection;
 // Check connection
 db.once('open', function () {
     console.log('Connected to mongodb');
+
 });
 // Check for DB errors
 db.on('error', function (err) {
@@ -42,6 +43,8 @@ let Message = require('./models/message');
 // Load View Engine
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
+
+app.use(fileUpload());
 
 // Body Parser Middleware
 // parse application/x-www.form-urlencoded
