@@ -6,7 +6,7 @@ const fileUpload = require('express-fileupload');
 const fs = require('fs');
 const path = require('path');
 const { getAbsolutePath } = require('../server/utils/path');
-const { URL } = require('url');
+const url = require('url');
 
 // Chat Model
 let Message = require('../models/message');
@@ -43,6 +43,7 @@ router.get('/', ensureAuthenticated, function (req, res) {
 
 // Add Chat Message
 router.post('/add', (req, res) => {
+    var hostName = req.headers.host;
     var users = req.body.users;
     var userId = req.body.userId;
     var files = req.body.files;
@@ -82,9 +83,8 @@ router.post('/add', (req, res) => {
                                 var fileNames = [];
                                 for (var i = 0; i < foundMessage.files.length; i++) {
                                     var fileName = foundMessage.files[i].file;
-                                    var filePath = new URL(path.join(__dirname, '../public/images/', fileName));    
-                                    // var filePath = "file:///d://Node-Projects//nodekb//public//images//" + fileName;
-                                    fileNames.push(filePath.href);
+                                    var filePath = "/images/" + fileName;
+                                    fileNames.push(filePath);
                                 }
                                 var msgResponse = {
                                     body: foundMessage.body,
@@ -112,15 +112,14 @@ router.post('/add', (req, res) => {
                         var fileNames = [];
                         for (var i = 0; i < foundMessage.files.length; i++) {
                             var fileName = foundMessage.files[i].file;
-                            var filePath = new URL(path.join(__dirname, '../public/images/', fileName));
-                            // var filePath = "file:///d://Node-Projects//nodekb//public//images//" + fileName;
-                            fileNames.push(filePath.href);
+                            var filePath = "/images/" + fileName;
+                            fileNames.push(filePath);
                         }
                         var msgResponse = {
                             body: foundMessage.body,
                             files: fileNames
                         };
-                        console.log(foundMessage);
+                        // console.log(foundMessage);
                         res.send(msgResponse);
                     });
                 }
@@ -137,30 +136,51 @@ router.post('/messages', (req, res) => {
         if (!room) {
             res.status(400).send(errorResponse(null, "Room Not Found"));
         } else {
-            Message.find({ roomId: room._id }).populate('user').exec((err, messages) => {
+            Message.find({ roomId: room._id }).populate('user').populate('files', 'file').exec((err, messages) => {
                 if (messages.length > 0) {
-                    var alteredMessages = [];
+                    // var alteredMessages = [];
+                    var callMessages = [];
                     for (var i = 0; i < messages.length; i++) {
-                        var createdAt = messages[i].createdAt;
-                        var updatedAt = messages[i].updatedAt;
-                        var userId = messages[i].user._id;
-                        var userName = messages[i].user.name;
-                        var body = messages[i].body;
-                        alteredMessages.push(
-                            {
-                                userId,
-                                userName,
-                                body,
-                                createdAt,
-                                updatedAt
-                            }
-                        );
-                    }
-                    var messageResponse = {
-                        messages: alteredMessages,
-                        users: users
+                        callMessages.push(getMessage(messages[i]));
                     };
-                    res.send(successResponse(messageResponse, "Messages found successfully"));
+
+                    function getMessage(message) {
+                        return new Promise((resolve, reject) => {
+                            var callMessageFiles = [];
+                            var files = message.files;
+                            for (var i = 0; i < files.length; i++) {
+                                callMessageFiles.push(getFilePath(files[i]));
+                            };
+                            function getFilePath(file) {
+                                return new Promise((resolve, reject) => {
+                                    var filePath = '/images/' + file.file;
+                                    resolve(filePath);
+                                });
+                            };
+                            Promise.all(callMessageFiles)
+                                .then((filesPath) => {
+                                    resolve({
+                                        userId: message.user._id,
+                                        userName: message.user.name,
+                                        body: message.body,
+                                        createdAt: message.createdAt,
+                                        updatedAt: message.updatedAt,
+                                        files: filesPath,
+                                    });
+                                })
+                                .catch((err) => console.log(err));
+                        });
+                    };
+
+                    Promise.all(callMessages)
+                        .then((messages) => {
+                            var messageResponse = {
+                                messages,
+                                users
+                            }
+                            res.send(successResponse(messageResponse, "Messages Found Successfully"));
+                        })
+                        .catch((err) => console.log(err));
                 } else {
                     res.send(successResponse(null, "Messages Not Found"));
                 }

@@ -14,11 +14,12 @@ var generateLocationMessage = (from, latitude, longitude) => {
     };
 };
 
-var generatePrivateMessage = (from, to, text) => {
+var generatePrivateMessage = (from, to, text, files) => {
     return {
         from,
         to,
         text,
+        files,
         createdAt: new Date().getTime()
     }
 };

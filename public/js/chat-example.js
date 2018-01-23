@@ -70,11 +70,22 @@ $(function () {
     });
 
     socket.on('newPrivateMessage', function (message) {
+        var showFiles = [];
+        var files = message.files;
+        for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            showFiles.push(
+                {
+                    file: file
+                }
+            )
+        }
         var formattedTime = moment(message.createdAt).format('h:mm a');
         var template = $('#message-template').html();
         var html = Mustache.render(template, {
             text: message.text,
             from: message.from,
+            files: showFiles,
             createdAt: formattedTime
         });
         var socketId = $('#messages').attr('socket-id-ol');
@@ -163,14 +174,26 @@ $(function () {
             success: function (messageResponse) {
                 var messages = messageResponse.data.messages;
                 // var users = messageResponse.data.users;
-                console.log(messages);
                 messages.forEach(function (message) {
+                    var showFiles = [];
+                    var files = message.files;
+                    console.log(files);
+                    for (var i = 0; i < files.length; i++) {
+                        var file = files[i];
+                        showFiles.push(
+                            {
+                                file: file
+                            }
+                        )
+                    }
+
                     var formattedTime = moment(message.createdAt).format('h:mm a');
                     var body = message.body;
                     var template = $('#message-template').html();
                     var html = Mustache.render(template, {
                         text: body,
                         from: message.userName,
+                        files: showFiles,
                         createdAt: formattedTime
                     });
                     $('#messages').append(html);
@@ -288,6 +311,7 @@ $(function () {
                 from: userId,
                 senderSocketId: socket.id,
                 to: clientSocketId,
+                files: [],
                 text: messsageTextbox.val()
             }, function () {
                 messsageTextbox.val('');
@@ -313,6 +337,7 @@ $(function () {
     $('#file-upload-form').on('submit', function (e) {
         e.preventDefault();
         var clientUserId = $('#messages').attr('user-id-ol');
+        var clientSocketId = $('#messages').attr('socket-id-ol');
         var users = [userId, clientUserId];
         $.ajax({
             type: 'POST',
@@ -331,32 +356,40 @@ $(function () {
                     url: '/chat/add',
                     data: messageToBeSaved,
                     success: function (msgResp) {
-                        // 
                         console.log(JSON.stringify(msgResp, undefined, 2));
-                        // var showFiles = [];
-                        // var files = msgResp.files;
-                        // for (var i = 0; i < files.length; i++) {
-                        //     var file = files[i].file;
-                        //     showFiles.push(
-                        //         {
-                        //             file: file
-                        //         }
-                        //     )
-                        //     console.log(file);
-                        // }
+                        var showFiles = [];
+                        var files = msgResp.files;
+                        console.log("After Uploading File Emitting Files with other info: " + files);
+                        if (clientSocketId) {
+                            socket.emit('createPrivateMessage', {
+                                from: userId,
+                                senderSocketId: socket.id,
+                                to: clientSocketId,
+                                files: files,
+                            }, function () {
+                                messsageTextbox.val('');
+                            });
+                        }
 
-                        // // Data To Append
-
-                        // var formattedTime = moment().format('h:mm a');
-                        // var template = $('#message-template').html();
-                        // var html = Mustache.render(template, {
-                        //     text: "",
-                        //     from: userName,
-                        //     files: showFiles,
-                        //     createdAt: formattedTime
-                        // });
-                        // $('[user-id-ol=' + clientUserId + ']').append(html);
-                        // scrollToBottom();
+                        for (var i = 0; i < files.length; i++) {
+                            var file = files[i];
+                            showFiles.push(
+                                {
+                                    file: file
+                                }
+                            )
+                        }
+                        // Data To Append
+                        var formattedTime = moment().format('h:mm a');
+                        var template = $('#message-template').html();
+                        var html = Mustache.render(template, {
+                            text: "",
+                            from: userName,
+                            files: showFiles,
+                            createdAt: formattedTime
+                        });
+                        $('[user-id-ol=' + clientUserId + ']').append(html);
+                        scrollToBottom();
                     },
                     dataType: 'json'
                 });

@@ -1,4 +1,4 @@
-var {generateMessage, generateLocationMessage} = require('./message');
+var { generateMessage, generateLocationMessage, generatePrivateMessage } = require('./message');
 
 describe('generateMessage', () => {
     it('should generate correct message object', () => {
@@ -25,3 +25,19 @@ describe('generateLocationMessage', () => {
         expect(locationMessage.from).toBe(from);
     });
 });
+
+describe('generatePrivateMessage', () => {
+    it('should generate correct private message object', () => {
+        var from = 'Jen';
+        var to = 'Manjul';
+        var text = "Some message";
+        var files = ['/images/hero.jpg', '/images/zero.jpg'];
+        var message = generatePrivateMessage(from, to, text, files);
+
+        expect(message.createdAt).toBeDefined();
+        expect(message.from).toBe(from);
+        expect(message.to).toBe(to);
+        expect(message.text).toBe(text);
+        expect(message.files).toBe(files);
+    });
+})

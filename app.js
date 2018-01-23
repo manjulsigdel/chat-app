@@ -165,7 +165,7 @@ io.on('connection', (socket) => {
             if (err) {
                 console.log('User Not Found');
             } else {
-                socket.to(message.to).emit('newPrivateMessage', generatePrivateMessage(user.name, message.senderSocketId, message.text));
+                socket.to(message.to).emit('newPrivateMessage', generatePrivateMessage(user.name, message.senderSocketId, message.text, message.files));
                 callback();
             }
         });
